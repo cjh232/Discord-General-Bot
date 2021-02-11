@@ -1,67 +1,56 @@
 import discord
+from discord.ext import commands
 import secrets
 import weather
 
-
-client = discord.Client()
-
-
-async def handle_commands(channel):
-
-    embed = discord.Embed(title="Commands",
-                          description="Some useful commands and formatting information",
-                          color=discord.Color.purple())
-    embed.add_field(name="$weather <city name> - <space separated tags>",
-                    value="Gets weather data for the given city.",
-                    inline=False)
-    embed.add_field(name="$tags", value="Returns list of tags.", inline=True)
-    embed.add_field(name="$cmd",  value="Returns list of commands.", inline=True)
-
-    await channel.send(embed=embed)
+bot = commands.Bot(command_prefix='$')
 
 
-async def bad_formatting(message):
+@bot.command(name="weather")
+async def _weather(ctx, *args):
+    city_params = []
+    tags_list = []
+    bfr_tags = True
 
-    msg = '__**Error: Bad Formatting**__\n'
-    msg += 'Type "$weather [city name] - [space separated tags]" to get weather results.\n'
-    msg += 'Type "$tags" to see available tags.'
+    for arg in args:
+        if arg == '-':
+            bfr_tags = False
+            continue
 
-    await message.channel.send(msg)
+        if bfr_tags:
+            city_params.append(arg)
+        else:
+            tags_list.append(arg)
 
+    city = ' '.join(city_params)
 
-async def handle_weather_request(message):
-
-    content = message.content.split('-')
-
-    op = content[0].rstrip().split(' ')
-    tags = content[1].lstrip().split(' ') if len(content) > 1 else []
-
-    _, *city = op
-
-    location = ' '.join(city)
-
-    res = weather.get_weather(location, tags)
+    res = weather.get_weather(city_name=city, tags=tags_list)
 
     embed_description = res["desc"] if "desc" in res.keys() else ""
 
-    embed = discord.Embed(title=res["city"], description=embed_description)
+    embed = discord.Embed(title=res["city"].title(),
+                          description=embed_description,
+                          color=discord.Color.purple())
 
     for key, value in res.items():
         if key != "desc" and key != "city":
             embed.add_field(name=key, value=value, inline=False)
 
-    await message.channel.send(embed=embed)
+    embed.set_footer(text="Weather data supplied by OpenWeather® ")
+
+    await ctx.send(embed=embed)
 
 
-async def handle_tags(channel):
-
+@bot.command()
+async def tags(ctx):
     tags_dict = {
         "- a": "All",
         "- p": "Pressure",
         "- t": "Temperature",
         "- h": "Humidity",
         "- f": "Feels like",
-        "- w": "Wind speed"
+        "- w": "Wind speed",
+        "- d": "Description"
     }
 
     embed = discord.Embed(title="Tags", description="List of tags to parse weather data.")
@@ -69,29 +58,26 @@ async def handle_tags(channel):
     for key, value in tags_dict.items():
         embed.add_field(name=value, value=key, inline=True)
 
-    await channel.send(embed=embed)
+    await ctx.send(embed=embed)
 
 
-@client.event 
+@bot.command()
+async def commands(ctx):
+    embed = discord.Embed(title="Commands",
+                          url="https://github.com/cjh232/Discord-Weather-Bot",
+                          description="Some useful commands and formatting information",
+                          color=discord.Color.purple())
+    embed.add_field(name="$weather <city name> - <space separated tags>",
+                    value="Gets weather data for the given city.",
+                    inline=False)
+    embed.add_field(name="$tags", value="Returns list of tags.", inline=True)
+    embed.add_field(name="$commands", value="Returns list of commands.", inline=True)
+
+    await ctx.send(embed=embed)
+
+
+@bot.event
 async def on_ready():
-    print('We have logged in as {0.user}'.format(client))
+    print(f'We have logged in as {bot.user}')
 
-
-@client.event
-async def on_message(message):
-    if message.author == client.user:
-        return
-
-    if message.content.startswith('$weather'):
-        await handle_weather_request(message)
-    
-    if message.content.startswith('$cmd'):
-        await handle_commands(message.channel)
-    
-    if message.content.startswith('$tags'):
-        await handle_tags(message.channel)
-        
-
-token = secrets.TOKEN
-
-client.run(token)
+bot.run(secrets.token)

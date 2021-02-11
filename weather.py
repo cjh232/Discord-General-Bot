@@ -11,7 +11,8 @@ def get_weather(city_name, tags):
 
     response = requests.get(complete_url)
 
-    all_tags = 'a' in tags or len(tags) == 0
+    all_tags = 'a' in tags
+    empty_tags = len(tags) == 0
 
     x = response.json()
 
@@ -38,18 +39,20 @@ def get_weather(city_name, tags):
             "city": city_name,
         }
 
-        if 'd' in tags or all_tags:
+        temp_logo = '🥶' if current_temp < 40 else '🌞'
+
+        if 'd' in tags or all_tags or empty_tags:
             res["desc"] = weather_desc.capitalize()
-        if 't' in tags or all_tags:
-            res["Current Temp:"] = f"{current_temp} °F"
-        if 'f' in tags or all_tags:
-            res["Feels Like:"] = f"{feels_like} °F"
-        if 'h' in tags or all_tags:
-            res["Humidity:"] = f"{current_humidity}%"
+        if 't' in tags or all_tags or empty_tags:
+            res["Current Temp:"] = f"🌡️ {current_temp} °F"
+        if 'f' in tags or all_tags or empty_tags:
+            res["Feels Like:"] = f"{temp_logo}  {feels_like} °F"
+        if 'h' in tags or all_tags or empty_tags:
+            res["Humidity:"] = f"💦  {current_humidity}%"
         if 'p' in tags or all_tags:
-            res["Pressure:"] = f"{current_pressure} hPa"
-        if 'w' in tags or all_tags:
-            res["Wind Speed:"] = f"{wind_speed} mph"
+            res["Pressure:"] = f"🔽  {current_pressure} hPa"
+        if 'w' in tags or all_tags or empty_tags:
+            res["Wind Speed:"] = f"💨  {wind_speed} mph"
 
         return res
     else:
