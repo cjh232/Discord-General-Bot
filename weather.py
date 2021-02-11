@@ -1,5 +1,6 @@
 import requests
 import secrets
+import discord
 
 api_key = secrets.WEATHER_API
 
@@ -57,3 +58,37 @@ def get_weather(city_name, tags):
         return res
     else:
         return {"city": "Error", "desc": "City was not found."}
+
+
+async def handle_weather_request(ctx, *args, embed_color):
+    city_params = []
+    tags_list = []
+    bfr_tags = True
+
+    for arg in args:
+        if arg == '-':
+            bfr_tags = False
+            continue
+
+        if bfr_tags:
+            city_params.append(arg)
+        else:
+            tags_list.append(arg)
+
+    city = ' '.join(city_params)
+
+    res = get_weather(city_name=city, tags=tags_list)
+
+    embed_description = res["desc"] if "desc" in res.keys() else ""
+
+    embed = discord.Embed(title=res["city"].title(),
+                          description=embed_description,
+                          color=embed_color)
+
+    for key, value in res.items():
+        if key != "desc" and key != "city":
+            embed.add_field(name=key, value=value, inline=False)
+
+    embed.set_footer(text="Weather data supplied by OpenWeather® ")
+
+    await ctx.send(embed=embed)

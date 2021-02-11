@@ -2,43 +2,19 @@ import discord
 from discord.ext import commands
 import secrets
 import weather
+import polls
+import server_info
 
-bot = commands.Bot(command_prefix='$')
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=commands.when_mentioned_or('!'), intents=intents)
+embed_color = discord.Color.dark_gold()
+
+# Commands
 
 
 @bot.command(name="weather")
 async def _weather(ctx, *args):
-    city_params = []
-    tags_list = []
-    bfr_tags = True
-
-    for arg in args:
-        if arg == '-':
-            bfr_tags = False
-            continue
-
-        if bfr_tags:
-            city_params.append(arg)
-        else:
-            tags_list.append(arg)
-
-    city = ' '.join(city_params)
-
-    res = weather.get_weather(city_name=city, tags=tags_list)
-
-    embed_description = res["desc"] if "desc" in res.keys() else ""
-
-    embed = discord.Embed(title=res["city"].title(),
-                          description=embed_description,
-                          color=discord.Color.purple())
-
-    for key, value in res.items():
-        if key != "desc" and key != "city":
-            embed.add_field(name=key, value=value, inline=False)
-
-    embed.set_footer(text="Weather data supplied by OpenWeather® ")
-
-    await ctx.send(embed=embed)
+    await weather.handle_weather_request(ctx, *args, embed_color=embed_color)
 
 
 @bot.command()
@@ -53,7 +29,10 @@ async def tags(ctx):
         "- d": "Description"
     }
 
-    embed = discord.Embed(title="Tags", description="List of tags to parse weather data.")
+    embed = discord.Embed(title="Tags",
+                          description="List of tags to parse weather data.",
+                          color=embed_color
+                          )
 
     for key, value in tags_dict.items():
         embed.add_field(name=value, value=key, inline=True)
@@ -66,7 +45,7 @@ async def commands(ctx):
     embed = discord.Embed(title="Commands",
                           url="https://github.com/cjh232/Discord-Weather-Bot",
                           description="Some useful commands and formatting information",
-                          color=discord.Color.purple())
+                          color=embed_color)
     embed.add_field(name="$weather <city name> - <space separated tags>",
                     value="Gets weather data for the given city.",
                     inline=False)
@@ -76,8 +55,38 @@ async def commands(ctx):
     await ctx.send(embed=embed)
 
 
-@bot.event
-async def on_ready():
-    print(f'We have logged in as {bot.user}')
+@bot.command()
+async def math(ctx, arg1: int, op, arg2: int):
+    valid_ops = ['/', '+', '-', '*']
+
+    if op not in valid_ops:
+        await ctx.send('Invalid operation.')
+        return
+
+    print(f'{arg1}{op}{arg2}')
+
+    loc = {}
+    exec(f'res = {arg1}{op}{arg2}', globals(), loc)
+
+    await ctx.send(loc["res"])
+
+
+@bot.command()
+async def poll(ctx, *args):
+    await polls.create_poll(ctx, *args, embed_color=embed_color)
+
+
+@bot.command()
+async def stfu(ctx, *, name):
+    await ctx.send(f'Shut the FUCK up, {name}')
+
+
+@bot.command()
+async def server(ctx, *args):
+    await server_info.get_server_info(ctx, embed_color=embed_color, *args)
+
+
+# Events
+
 
 bot.run(secrets.token)
